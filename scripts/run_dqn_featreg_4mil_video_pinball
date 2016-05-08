@@ -1,0 +1,115 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+    echo "Please provide the index of the gpu: "
+    echo "  ./run_dqn_featreg_4mil_video_pinball gpu_id_onebased"
+    echo "  e.g. ./run_dqn_featreg_4mil_video_pinball 2"
+    exit 0
+fi
+
+games="'video_pinball'"
+outputfile="featreg_paper_video_pinball_4mil"
+
+cd ..
+
+#########################################################################
+## SETTINGS 
+#########################################################################
+FRAMEWORK="alewrap" # what atari framework to use
+game_path=$PWD"/roms/" # path to rom files
+seed=1 # random seed
+gpu=$1 # GPU index to use, 1-based, -1 for CPU
+num_threads=4 # number of CPU threads to use
+
+draw=0 # whether to display each frame
+drawsave=0 # whether to save each frame to a PNG file
+drawsave_path="./" # the path to save each frame
+
+#########################################################################
+## ENVIRONMENT PARAMETERS 
+#########################################################################
+ENV=$games # the games to play
+env_params="useRGB=true" # useRGB=true causes the game environment to output RGB values
+                         # directly instead of the 8-bit palette used by Atari.
+                         # (this should not need to be changed for most purposes)
+pool_frms_type="\"max\"" # the pooling op prevents flashing game objects from disappearing
+                         # between frames this function is extracted from the torch tensor
+                         # metatable and thus can be any function like mean, max..
+                         # (see torch/share/lua/5.1/alewrap/GameScreen.lua)
+pool_frms_size=2 # number of frames to do pooling operation on
+pool_frms="type="$pool_frms_type",size="$pool_frms_size
+actrep=4 # how many times to repeat a policy-chosen action
+random_starts=30 # play action 0 between 1 and random_starts 
+                 # number of times at the start of each training episode
+
+
+#########################################################################
+## AGENT PARAMETERS 
+#########################################################################
+agent="NeuralQLearner" # what agent type to use
+agent_name=$agent"_"$outputfile # name of the agent, used for file saving
+
+n_replay=1 # number of steps to replay per learning step
+update_freq=4 # number of frames between minibatch updates
+preproc_net="\"util.net_downsample_2x_full_y\"" # the frame preprocess function
+state_dim=7056 # dimension of each (non-concatenated) state
+               # (its really the frame dimension, not state)
+ncols=1 # number of color channels in input
+hist_len=4 # number of frames to concatenate together
+
+# Replay memory
+replay_table="\"TransitionTable\""
+replay_memory=1000000 # number of frames in replay memory
+bufferSize=512 # buffer used to quickly load states from replay memory
+
+# RL parameters
+discount=0.99 # discount factor
+ep_start=1 # epsilon greedy starting rate
+ep_end=0.1 # epsilon greedy final annealing rate
+ep_endt=$replay_memory # number of frames before reaching final epsilon greedy rate
+rescale_r=1 # whether to rescale rewards when used as targets
+clip_delta=1 # value to clip absolute temporal difference errors
+min_reward=-1 # the minimum reward (we clip rewards lower than this)
+max_reward=1 # the maximum reward (we clip rewards higher than this)
+
+# Network 
+netfile="\"NeuralActorMimicLearner_featreg_paper_4000000.t7\"" # network file
+minibatch_size=32 # number of samples per minibatch
+valid_size=500    # number of samples per validation set test
+learn_start=50000 # number of frames before gradient descent training starts
+target_q=10000 # how often to update the target network (0 for no target network)
+n_freeze_layers=0 # number of bottom layers whose parameters are not updated
+
+# Gradient-descent algorithm and parameters
+optim="\"RMSpropOptimizer\"" # optimization function
+lr=0.00025 # learning rate 
+beta1=0.95 # g momentum
+beta2=0.95 # g2 momentum
+gamma=0.01 # value added to denominator in algorithms
+
+# build up agent parameters as a single string
+agent_params="lr="$lr",ep_start="$ep_start",ep="$ep_start",ep_end="$ep_end",ep_endt="$ep_endt",discount="$discount",hist_len="$hist_len",learn_start="$learn_start",replay_table="$replay_table",replay_memory="$replay_memory",update_freq="$update_freq",n_replay="$n_replay",network="$netfile",preproc="$preproc_net",state_dim="$state_dim",minibatch_size="$minibatch_size",rescale_r="$rescale_r",ncols="$ncols",bufferSize="$bufferSize",valid_size="$valid_size",target_q="$target_q",clip_delta="$clip_delta",min_reward="$min_reward",max_reward="$max_reward",optim="$optim",beta1="$beta1",beta2="$beta2",gamma="$gamma",n_freeze_layers="$n_freeze_layers
+
+#########################################################################
+## OUTPUT PARAMETERS
+#########################################################################
+steps=10000000 # total number of steps before we stop playing
+eval_freq=250000 # number of frames between evaluates
+eval_steps=125000 # number of frames to evaluate on
+prog_freq=10000 # number of frames between progression outputs (i.e. weight+grad norms)
+save_freq=125000 # number of frames between model saving 
+
+#########################################################################
+## ARGUMENT STRING
+#########################################################################
+args="-framework $FRAMEWORK -game_path $game_path -name $agent_name -envs $ENV -env_params $env_params -agent $agent -agent_params $agent_params -steps $steps -eval_freq $eval_freq -eval_steps $eval_steps -prog_freq $prog_freq -save_freq $save_freq -actrep $actrep -gpu $gpu -random_starts $random_starts -pool_frms $pool_frms -seed $seed -threads $num_threads -draw $draw -drawsave $drawsave -drawsave_path $drawsave_path"
+echo $args
+
+#########################################################################
+## RUN GAME
+#########################################################################
+if [ $draw -ne 0 ]; then
+    qlua train/train_atari_agent.lua $args
+else
+    th train/train_atari_agent.lua $args
+fi
