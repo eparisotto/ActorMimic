@@ -54,15 +54,14 @@ function create_network(args)
     if args.gpu >=0 then
         net:cuda()
     end
+	 if args.cudnn and args.cudnn > 0 then
+       -- cuDNN-ify the network
+       cudnn.convert(net, cudnn)
+    end
     if args.verbose >= 2 then
         print(net)
         print('Convolutional layers flattened output size:', nel)
     end
-
-	 if args.cudnn and args.cudnn > 0 then
-		 -- cuDNN-ify the network
-		 cudnn.convert(net, cudnn)
-	 end
     
     return net
 end

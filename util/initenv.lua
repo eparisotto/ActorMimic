@@ -52,6 +52,7 @@ function torchSetup(_opt)
    if opt.agent_params then
       opt.agent_params = str_to_table(opt.agent_params)
       opt.agent_params.gpu       = opt.gpu
+		opt.agent_params.cudnn     = opt.cudnn
       opt.agent_params.best      = opt.best
       opt.agent_params.verbose   = opt.verbose
       if opt.network ~= '' then
@@ -147,6 +148,7 @@ function setupAgent(_opt, gameActions, envNames, envActions)
    _opt.agent_params.name    = _opt.name
    _opt.agent_params.actions = gameActions
    _opt.agent_params.gpu     = _opt.gpu
+	_opt.agent_params.cudnn   = _opt.cudnn
    _opt.agent_params.best    = _opt.best
    _opt.agent_params.n_games = #envNames
    _opt.agent_params.verbose = _opt.verbose

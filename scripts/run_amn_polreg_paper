@@ -25,6 +25,9 @@ draw=0 # whether to display each frame
 drawsave=0 # whether to save each frame to a PNG file
 drawsave_path="./" # the path to save each frame
 
+cudnn=1 # whether to use cuDNN kernels
+cudnn_fastest=1 # whether to set fastest flag in cuDNN
+
 #########################################################################
 ## ENVIRONMENT PARAMETERS 
 #########################################################################
@@ -111,7 +114,7 @@ save_freq=1000000 # number of frames between model saving
 #########################################################################
 ## ARGUMENT STRING
 #########################################################################
-args="-framework $FRAMEWORK -game_path $game_path -name $agent_name -envs $ENV -env_params $env_params -agent $agent -agent_params $agent_params -steps $steps -eval_freq $eval_freq -eval_steps $eval_steps -prog_freq $prog_freq -save_freq $save_freq -actrep $actrep -gpu $gpu -random_starts $random_starts -pool_frms $pool_frms -seed $seed -threads $num_threads -draw $draw -drawsave $drawsave -drawsave_path $drawsave_path -save_versions 1"
+args="-framework $FRAMEWORK -game_path $game_path -name $agent_name -envs $ENV -env_params $env_params -agent $agent -agent_params $agent_params -steps $steps -eval_freq $eval_freq -eval_steps $eval_steps -prog_freq $prog_freq -save_freq $save_freq -actrep $actrep -gpu $gpu -cudnn $cudnn -cudnn_fastest $cudnn_fastest -random_starts $random_starts -pool_frms $pool_frms -seed $seed -threads $num_threads -draw $draw -drawsave $drawsave -drawsave_path $drawsave_path -save_versions 1"
 echo $args
 
 #########################################################################

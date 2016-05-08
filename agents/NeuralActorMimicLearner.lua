@@ -6,17 +6,16 @@ end
 local aml, nl = torch.class('zoo.NeuralActorMimicLearner', 'zoo.NeuralLearner')
 
 function aml:__init(args)
-
+	
    -- Actor-Mimic parameters
    self.objective     = "ce"                      -- cross-entropy or l2.
    self.temperature   = args.temperature or 1.0   -- temperature of softmax if obj=CE.
    self.actor         = args.actor or "student"   -- sample from 'student' or 'expert'.
    self.featreg       = args.featreg or false     -- whether to use feature regression.
    self.featreg_scale = args.featreg_scale or 1.0 -- scaling factor for feature regression.
-      
-
+	
    nl.__init(self, args)
-
+	
    -- Create Actor-Mimic minibatch+validation structures
    self.full_q  = torch.FloatTensor(self.minibatch_size*self.n_games, self.n_actions)
    self.valid_q = torch.FloatTensor(self.valid_size*self.n_games, self.n_actions)
@@ -38,11 +37,11 @@ function aml:__init(args)
          end
       end
    end
-
+	
    -- Softmax function
    self.SoftMaxCE = nn.SoftMax()   
-
-   -- Set this function to save an 'if' every update
+	
+   -- Set objective function
    if objective == 'l2' then
       self.getUpdate = self.getUpdateL2
    else
@@ -52,7 +51,7 @@ end
 
 function aml:createNetwork(args)
    nl.createNetwork(self, args)
-
+	
    -- Load expert networks
    self.expertnet = {}
    if not (type(args.expertnet_prefix) == 'string') then
@@ -67,29 +66,28 @@ function aml:createNetwork(args)
          error('Error loading expert network')
       end
       self.expertnet[i] = exp.model
-      print(self.expertnet[i])
-
+		
       local nl = #self.expertnet[i].modules
       local  l =  self.expertnet[i].modules[nl]
-
+		
       -- Either the expert has the full 18-action output or the game-specific valid actions
       if (l.output:size(2) ~= self.n_actions) and (l.output:size(2) ~= #self.game_actions[i]) then
 			error('Expert network has wrong number of actions as output')
       end
-
+		
       -- If the expert network has only game-specific valid actions as output, convert
       -- it into a full 18-action output
       if l.output:size(2) == #self.game_actions[i] then
          local newl = nn.Linear(l.weight:size(2), self.n_actions)
          newl.weight:zero()
          newl.bias:zero()
-
+			
          for j=1,#self.game_actions[i] do
             newl.weight[{{self.game_actions[i][j]},{}}]:copy(l.weight[{{j},{}}])
             newl.bias[self.game_actions[i][j]] = l.bias[j]
          end
          newl:cuda()
-
+			
          -- Sanity check
          local valcount = 1
          for j=1,self.n_actions do
@@ -104,19 +102,23 @@ function aml:createNetwork(args)
          end
          self.expertnet[i].modules[nl] = newl
       end
-
+		
       if self.gpu and self.gpu >= 0 then
          self.expertnet[i]:cuda()
       else
          self.expertnet[i]:float()
       end
+		if self.cudnn and self.cudnn > 0 then
+			cudnn.convert(self.expertnet[i], cudnn)
+		end
       exp = nil
+		print(self.expertnet[i])
    end
-
+	
    -- augment the network with the prediction networks
    if self.featreg then
-      self.featregnet    = args.featregnet
-
+      self.featregnet = args.featregnet
+		
       print('Creating Feature Regression Network from ' .. self.featregnet)
       local msg, err = pcall(require, self.featregnet)
       if not msg then
@@ -125,11 +127,11 @@ function aml:createNetwork(args)
       end
       self.featregnet = err
       self.featregnet = self:featregnet()
-
+		
       -- Augment the current network with the feature regression networks
       self.network.modules[#self.network.modules] = self.featregnet
       print(self.network)
-
+		
       if self.gpu and self.gpu >= 0 then
          self.network:cuda()
       else
@@ -143,13 +145,13 @@ function aml:getUpdateL2(args)
    outputs = args.outputs
    targets = args.targets
    mask    = args.mask
-
+	
    if self.gpu >= 0 then
       outputs = outputs:cuda()
       targets = targets:cuda()
    end
    targets:add(-1, outputs:cmul(mask))
-
+	
    return targets
 end
 
@@ -158,26 +160,26 @@ function aml:getUpdateCE(args)
    outputs = args.outputs:float()
    targets = args.targets
    mask    = args.mask
-
+	
    -- number of samples / game
    local g_size = outputs:size(1) / self.n_games 
-
+	
    for i=1,self.n_games do
       local idx = {{(i-1)*g_size+1, i*g_size}, {}}
       local subtargets = targets[idx]:maskedSelect(mask[idx])
       local suboutputs = outputs[idx]:maskedSelect(mask[idx])
       subtargets:resize(g_size, #self.game_actions[i])
       suboutputs:resize(g_size, #self.game_actions[i])
-
+		
       -- Divide target net outputs by temperature before softmax
       subtargets:div(self.temperature)
-
+		
       subtargets:copy(self.SoftMaxCE:forward(subtargets))
 			:add(-1, self.SoftMaxCE:forward(suboutputs))
       targets[idx]:zero():maskedCopy(mask[idx], subtargets)      
    end
    if self.gpu >= 0 then targets = targets:cuda() end
-
+	
    return targets
 end
 
@@ -189,23 +191,23 @@ function aml:getUpdateFeatureL2(args)
       outputs = outputs:cuda()
       targets = targets:cuda()
    end
-
+	
    local gradtargets = targets:clone():add(-1, outputs):mul(self.featreg_scale)
    return gradtargets
 end
 
 function aml:calcTargets()
-
+	
    -- Zero out the expert Q-value storage
    self.full_q:zero()
    
    -- Run through each game and query the expert for guidance
    for i=1,self.n_games do
       local idx = {{(i-1)*self.minibatch_size+1, i*self.minibatch_size},{}}
-
+		
       local expertout = self.expertnet[i]:forward(self.full_s[idx]):float()
       self.full_q[idx]:copy(expertout)
-
+		
       -- save the features, if needed
       if self.featreg then
 			self.full_f[i]
@@ -214,23 +216,23 @@ function aml:calcTargets()
    end
    -- Mask out invalid actions
    self.full_q:maskedFill(torch.ne(self.mb_mask, 1), 0)
-
+	
    -- Forward pass through the mimic
    -- The output here will be a table if featreg is on
    local outputs = self.network:forward(self.full_s)
-
+	
    -- Take just the action outputs
    local actout = outputs
    if self.featreg then actout = outputs[1] end
-
+	
    -- Calculate the action targets
    local acttar = self:getUpdate{outputs=actout, targets=self.full_q, mask=self.mb_mask}
-
+	
    -- Are we done?
    if not self.featreg then
       return acttar
    end
-
+	
    -- Build full target table including action targets
    local fulltargets = {acttar}
    
@@ -238,13 +240,13 @@ function aml:calcTargets()
    for i=1,self.n_games do
       -- zero out the parts of the targets that correspond to different games
       fulltargets[i+1] = self.featreg_targets[i]:zero()
-
+		
       -- Fill in the targets for the correct game
       local idx = {{(i-1)*self.minibatch_size+1,i*self.minibatch_size},{}}
       fulltargets[i+1][idx]
 			:copy(self:getUpdateFeatureL2{outputs=outputs[i+1][idx], targets=self.full_f[i]})
    end
-
+	
    return fulltargets
 end
 
@@ -266,21 +268,21 @@ function aml:compute_validation_statistics()
       self.valid_s  = self.valid_s:cuda()
       self.valid_s2 = self.valid_s2:cuda()
    end
-
+	
    local outputs = self.network:forward(self.valid_s)
-
+	
    local actout = outputs
    if self.featreg then actout = outputs[1] end
-
+	
    local targets = actout:clone():zero()
-
+	
    local update = self:getUpdate{outputs=actout, targets=self.valid_q, mask=self.val_mask}
-
+	
    self.action_loss = {}
    for i=1,self.n_games do
       self.action_loss[i] = update[{{(i-1)*self.valid_size+1,i*self.valid_size},{}}]:abs():mean()
    end
-
+	
    if not self.featreg then
       return nil
    end
@@ -291,7 +293,7 @@ function aml:compute_validation_statistics()
       self.featreg_loss[i] = self:getUpdateFeatureL2{outputs=outputs[i+1][idx], targets=self.valid_f[i]}
       self.featreg_loss[i] = self.featreg_loss[i]:abs():mean()
    end
-
+	
    -- Reconvert back to CPU RAM to save memory
    if self.gpu >= 0 then
       self.valid_s  = self.valid_s:float()
@@ -304,9 +306,9 @@ function aml:print_validation_statistics()
    for i=1,self.n_games do
       io.write('\t' .. self.game_names[i] .. ': ' .. self.objective, self.action_loss[i])
       if self.featreg then
-	 print(', featreg', self.featreg_loss[i])
+			print(', featreg', self.featreg_loss[i])
       else
-	 print('')
+			print('')
       end
    end
 end

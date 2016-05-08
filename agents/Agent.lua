@@ -41,6 +41,9 @@ function agent:__init(args)
    -- Whether to use GPU, if needed
    self.gpu = args.gpu
 
+	-- Whether to use cuDNN, if needed
+	self.cudnn = args.cudnn
+
    -- Number of training steps so far.
    self.numSteps = 0
 
