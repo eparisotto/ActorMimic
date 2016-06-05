@@ -1,4 +1,5 @@
 *.t7
 *~
 scripts/*.txt
-roms
+roms/*
+!roms/ADD_ROMS_HERE
