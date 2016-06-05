@@ -1,4 +1,5 @@
 *.t7
+!experts/*.t7
 *~
 scripts/*.txt
 roms/*
