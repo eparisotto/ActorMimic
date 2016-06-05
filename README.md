@@ -12,7 +12,7 @@ Allows a single deep network to play several Atari 2600 games at once. This netw
 
 Below is a set of instructions to re-create similar results as in the transfer section of the paper (section 5.2). 
 
-NOTE: training the full pipeline from multitask to transfer results can easily take over 3 weeks even with a fast GPU.
+NOTE: training the full pipeline from multitask to transfer can easily take over 3 weeks even with a fast GPU.
 
 ## Multitask using Policy Regression Objective
 This learns a multitask network on 13 source tasks using the policy regression objective. These 13 source tasks are the same as in the paper. The goal of training here is to later use this network for transfer, therefore training is stopped early at 4 million frames per game since that seemed best for later transfer results. 
@@ -21,7 +21,7 @@ This learns a multitask network on 13 source tasks using the policy regression o
     $ ./run_amn_polreg_paper [1-based gpuid]
 
 ## Transfer using Policy Regression Objective
-This learns a DQN on a new target task using the network trained above with the policy regression objective as a weight initialization. Below I have included scripts for training on the games where transfer had the largest effect.
+This trains a DQN on a new target task with the multitask policy-regression network as a weight initialization. Below I have included scripts for training on the games where transfer had the largest effect.
 
 Breakout:
 
@@ -45,7 +45,7 @@ This learns a multitask network on 13 source tasks using the combined policy and
     $ ./run_amn_featreg_paper [1-based gpuid]
 
 ## Transfer using Policy+Feature Regression Objective
-This learns a DQN on a new target task using the network trained above with the combined policy and feature regression objective as a weight initialization. Below I have included scripts for training on the games where transfer had the largest effect.
+This trains a DQN on a new target task with the multitask (policy+feature)-regression network trained above as a weight initialization. Below I have included scripts for training on the games where transfer had the largest effect.
 
 Breakout:
 
