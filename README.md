@@ -5,7 +5,7 @@ Allows a single deep network to play several Atari 2600 games at once. This netw
 # Installation
 
 1. Install torch (http://torch.ch/docs/getting-started.html#_).
-2. Run ./install_dependencies.sh to install xitari/alewrap.
+2. Run ./install_dependencies.sh to install xitari and alewrap.
 3. Find Atari 2600 ROMs and put them in roms/ directory.
 
 # Results
