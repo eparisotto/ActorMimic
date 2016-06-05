@@ -69,6 +69,8 @@ function aml:createNetwork(args)
          error('Error loading expert network')
       end
       self.expertnet[i] = exp.model
+		self.expertnet[i]:cuda()
+		self.expertnet[i]:forward(torch.zeros(1,unpack(self.input_dims)):cuda())
 		
       local nl = #self.expertnet[i].modules
       local  l =  self.expertnet[i].modules[nl]
