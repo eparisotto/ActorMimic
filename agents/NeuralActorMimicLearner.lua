@@ -42,9 +42,12 @@ function aml:__init(args)
    self.SoftMaxCE = nn.SoftMax()   
 	
    -- Set objective function
+	io.write('Objective:')
    if objective == 'l2' then
+		print(' L2')
       self.getUpdate = self.getUpdateL2
    else
+		print(' CE')
       self.getUpdate = self.getUpdateCE
    end
 end

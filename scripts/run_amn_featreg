@@ -1,14 +1,11 @@
 #!/bin/bash
 
-if [ -z "$1" ]; then
-    echo "Please provide the index of the gpu: "
-    echo "  ./run_amn_polreg_paper gpu_id_onebased"
-    echo "  e.g. ./run_amn_polreg_paper 2"
+if [ -z "$3" ]; then
+    echo "Please provide the name of the game, GPU id, and desired agent name: "
+    echo "  ./run_amn_polreg game_list gpu_id_onebased agentname"
+    echo "  e.g. ./run_amn_polreg \"'breakout','pong'\" 2 breakoutpong"
     exit 0
 fi
-
-games="'assault','atlantis','beam_rider','boxing','crazy_climber','demon_attack','enduro','fishing_derby','kangaroo','name_this_game','pong','seaquest','space_invaders'"
-outputfile="polreg_paper"
 
 cd ..
 
@@ -18,7 +15,7 @@ cd ..
 FRAMEWORK="alewrap" # what atari framework to use
 game_path=$PWD"/roms/" # path to rom files
 seed=1 # random seed
-gpu=$1 # GPU index to use, 1-based, -1 for CPU
+gpu=$2 # GPU index to use, 1-based, -1 for CPU
 num_threads=4 # number of CPU threads to use
 
 draw=0 # whether to display each frame
@@ -28,7 +25,7 @@ drawsave_path="./" # the path to save each frame
 #########################################################################
 ## ENVIRONMENT PARAMETERS 
 #########################################################################
-ENV=$games # the games to play
+ENV=$1 # the games to play
 env_params="useRGB=true" # useRGB=true causes the game environment to output RGB values
                          # directly instead of the 8-bit palette used by Atari.
                          # (this should not need to be changed for most purposes)
@@ -47,7 +44,7 @@ random_starts=30 # play action 0 between 1 and random_starts
 ## AGENT PARAMETERS 
 #########################################################################
 agent="NeuralActorMimicLearner" # what agent type to use
-agent_name=$agent"_"$outputfile # name of the agent, used for file saving
+agent_name=$agent"_"$3 # name of the agent, used for file saving
 
 n_replay=1 # number of steps to replay per learning step
 update_freq=4 # number of frames between minibatch updates
@@ -56,6 +53,11 @@ state_dim=7056 # dimension of each (non-concatenated) state
                # (its really the frame dimension, not state)
 ncols=1 # number of color channels in input
 hist_len=4 # number of frames to concatenate together
+
+# Attention output parameters
+heatmap_draw=0 # whether to display an attention heatmap of the current state
+heatmap_drawsave=0 # whether to save a attention heatmap to a PNG file
+heatmap_drawsave_path="\"./\"" # the path to save each frame
 
 # Replay memory
 replay_table="\"TransitionTable\""
@@ -68,6 +70,7 @@ ep_start=0.1 # epsilon greedy starting rate
 ep_end=0.1 # epsilon greedy final annealing rate
 ep_endt=$replay_memory # number of frames before reaching final epsilon greedy rate
 rescale_r=1 # whether to rescale rewards when used as targets
+clip_delta=1 # value to clip absolute temporal difference errors
 min_reward=-1 # the minimum reward (we clip rewards lower than this)
 max_reward=1 # the maximum reward (we clip rewards higher than this)
 
@@ -75,11 +78,13 @@ max_reward=1 # the maximum reward (we clip rewards higher than this)
 netfile="\"networks.convnet_multitask_atari\"" # network file
 minibatch_size=8 # number of samples per minibatch
 valid_size=50    # number of samples per validation set test
-learn_start=10000 # number of frames before gradient descent training starts
+#learn_start=10000 # number of frames before gradient descent training starts
+learn_start=1100
+target_q=10000 # how often to update the target network (0 for no target network)
 n_freeze_layers=0 # number of bottom layers whose parameters are not updated
 
 # Gradient-descent algorithm and parameters
-optim="\"AdamOptimizer\"" # optimization function
+optim="\"RMSpropOptimizer\"" # optimization function
 lr=0.00025 # learning rate 
 beta1=0.95 # g momentum
 beta2=0.95 # g2 momentum
@@ -92,26 +97,26 @@ expertnet_prefix="\"experts/\"" # file path+prefix to the location of the expert
 objective="ce" # the actor-mimic objective to use, "l2" (Q-regression) or "ce" (policy-regression)
 actor="student" # which policy to sample from, "student" or "expert" (student is usually more effective)
 
-featreg="false" # whether to use feature regression
+featreg="true" # whether to use feature regression
 featreg_scale=0.01 # how much to scale the feature regression objective
 featregnet="\"networks.featregnet_linearproj\"" # the augmenting feature-prediction network to use
 
 # build up agent parameters as a single string
-agent_params="lr="$lr",ep_start="$ep_start",ep="$ep_start",ep_end="$ep_end",ep_endt="$ep_endt",discount="$discount",hist_len="$hist_len",learn_start="$learn_start",replay_table="$replay_table",replay_memory="$replay_memory",update_freq="$update_freq",n_replay="$n_replay",network="$netfile",preproc="$preproc_net",state_dim="$state_dim",minibatch_size="$minibatch_size",rescale_r="$rescale_r",ncols="$ncols",bufferSize="$bufferSize",valid_size="$valid_size",min_reward="$min_reward",max_reward="$max_reward",optim="$optim",beta1="$beta1",beta2="$beta2",gamma="$gamma",n_freeze_layers="$n_freeze_layers",expertnet_prefix="$expertnet_prefix",objective="$objective",actor="$actor",featreg="$featreg",featreg_scale="$featreg_scale",featregnet="$featregnet
+agent_params="lr="$lr",ep_start="$ep_start",ep="$ep_start",ep_end="$ep_end",ep_endt="$ep_endt",discount="$discount",hist_len="$hist_len",learn_start="$learn_start",replay_table="$replay_table",replay_memory="$replay_memory",update_freq="$update_freq",n_replay="$n_replay",network="$netfile",preproc="$preproc_net",state_dim="$state_dim",minibatch_size="$minibatch_size",rescale_r="$rescale_r",ncols="$ncols",bufferSize="$bufferSize",valid_size="$valid_size",target_q="$target_q",clip_delta="$clip_delta",min_reward="$min_reward",max_reward="$max_reward",optim="$optim",beta1="$beta1",beta2="$beta2",gamma="$gamma",n_freeze_layers="$n_freeze_layers",expertnet_prefix="$expertnet_prefix",objective="$objective",actor="$actor",featreg="$featreg",featreg_scale="$featreg_scale",featregnet="$featregnet
 
 #########################################################################
 ## OUTPUT PARAMETERS
 #########################################################################
-steps=4000000 # total number of steps before we stop playing
+steps=50000000 # total number of steps before we stop playing
 eval_freq=250000 # number of frames between evaluates
 eval_steps=125000 # number of frames to evaluate on
 prog_freq=10000 # number of frames between progression outputs (i.e. weight+grad norms)
-save_freq=1000000 # number of frames between model saving 
+save_freq=125000 # number of frames between model saving 
 
 #########################################################################
 ## ARGUMENT STRING
 #########################################################################
-args="-framework $FRAMEWORK -game_path $game_path -name $agent_name -envs $ENV -env_params $env_params -agent $agent -agent_params $agent_params -steps $steps -eval_freq $eval_freq -eval_steps $eval_steps -prog_freq $prog_freq -save_freq $save_freq -actrep $actrep -gpu $gpu -random_starts $random_starts -pool_frms $pool_frms -seed $seed -threads $num_threads -draw $draw -drawsave $drawsave -drawsave_path $drawsave_path -save_versions 1"
+args="-framework $FRAMEWORK -game_path $game_path -name $agent_name -envs $ENV -env_params $env_params -agent $agent -agent_params $agent_params -steps $steps -eval_freq $eval_freq -eval_steps $eval_steps -prog_freq $prog_freq -save_freq $save_freq -actrep $actrep -gpu $gpu -random_starts $random_starts -pool_frms $pool_frms -seed $seed -threads $num_threads -draw $draw -drawsave $drawsave -drawsave_path $drawsave_path"
 echo $args
 
 #########################################################################
