@@ -2,25 +2,25 @@
 Code for paper http://arxiv.org/abs/1511.06342.
 Allows a single deep network to play several Atari 2600 games at once. This network can then be used as a weight initialization in a new target game, which can speed up initial learning in that game. 
 
-# Installation
+## Installation
 
 1. Install torch (http://torch.ch/docs/getting-started.html#_).
 2. Run ./install_dependencies.sh to install xitari and alewrap.
 3. Find Atari 2600 ROMs and put them in roms/ directory.
 
-# Results
+## Results
 
 Below is a set of instructions to re-create similar results as in the transfer section of the paper (section 5.2). 
 
 NOTE: training the full pipeline from multitask to transfer can easily take over 3 weeks even with a fast GPU.
 
-## Multitask using Policy Regression Objective
+### Multitask using Policy Regression Objective
 This learns a multitask network on 13 source tasks using the policy regression objective. These 13 source tasks are the same as in the paper. The goal of training here is to later use this network for transfer, therefore training is stopped early at 4 million frames per game since that seemed best for later transfer results. 
 
     $ cd scripts
     $ ./run_amn_polreg_paper [1-based gpuid]
 
-## Transfer using Policy Regression Objective
+### Transfer using Policy Regression Objective
 This trains a DQN on a new target task with the multitask policy-regression network as a weight initialization. Below I have included scripts for training on the games where transfer had the largest effect.
 
 Breakout:
@@ -38,13 +38,13 @@ Video Pinball:
     $ cd scripts
     $ ./run_dqn_polreg_4mil_video_pinball [1-based gpuid]
   
-## Multitask using Policy+Feature Regression Objective
+### Multitask using Policy+Feature Regression Objective
 This learns a multitask network on 13 source tasks using the combined policy and feature regression objective. These 13 source tasks are the same as in the paper. The goal of training here is to later use this network for transfer, therefore training is stopped early at 4 million frames per game since that seemed best for later transfer results. 
 
     $ cd scripts
     $ ./run_amn_featreg_paper [1-based gpuid]
 
-## Transfer using Policy+Feature Regression Objective
+### Transfer using Policy+Feature Regression Objective
 This trains a DQN on a new target task with the multitask (policy+feature)-regression network as a weight initialization. Below I have included scripts for training on the games where transfer had the largest effect.
 
 Breakout:
@@ -62,7 +62,7 @@ Video Pinball:
     $ cd scripts
     $ ./run_dqn_featreg_4mil_video_pinball [1-based gpuid]
 
-# Acknowledgments
+## Acknowledgments
 
 Code adapted from Deepmind's 2015 paper:
 
@@ -71,3 +71,16 @@ http://www.nature.com/nature/journal/v518/n7540/full/nature14236.html
 Github version here:
 
 https://github.com/kuz/DeepMind-Atari-Deep-Q-Learner
+
+## References 
+
+To reference this paper or the code, please cite:
+
+```
+@inproceedings{parisotto16_actormimic,
+  author    = {Emilio Parisotto and Jimmy Ba and Ruslan Salakhutdinov},
+  title     = {Actor-Mimic: Deep Multitask and Transfer Reinforcement Learning},
+  booktitle = {ICLR},
+  year      = {2016}
+}
+```
