@@ -45,7 +45,7 @@ This learns a multitask network on 13 source tasks using the combined policy and
     $ ./run_amn_featreg_paper [1-based gpuid]
 
 ## Transfer using Policy+Feature Regression Objective
-This trains a DQN on a new target task with the multitask (policy+feature)-regression network trained above as a weight initialization. Below I have included scripts for training on the games where transfer had the largest effect.
+This trains a DQN on a new target task with the multitask (policy+feature)-regression network as a weight initialization. Below I have included scripts for training on the games where transfer had the largest effect.
 
 Breakout:
 
